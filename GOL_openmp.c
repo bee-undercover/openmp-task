@@ -25,7 +25,7 @@ void game_of_life(struct Options *opt, int *current_grid, int *next_grid, int n,
             n_i[5] = i + 1; n_j[5] = j;
             n_i[6] = i + 1; n_j[6] = j - 1;
             n_i[7] = i;     n_j[7] = j - 1;
-#pragma omp critical
+
             if(n_i[0] >= 0 && n_j[0] >= 0 && current_grid[n_i[0] * m + n_j[0]] == ALIVE) neighbours++;
             if(n_i[1] >= 0 && current_grid[n_i[1] * m + n_j[1]] == ALIVE) neighbours++;
             if(n_i[2] >= 0 && n_j[2] < m && current_grid[n_i[2] * m + n_j[2]] == ALIVE) neighbours++;
@@ -97,9 +97,23 @@ int main(int argc, char **argv)
         steptime = init_time();
         game_of_life(opt, grid, updated_grid, n, m);
         // swap current and updated grid
-        tmp = grid;
-        grid = updated_grid;
-        updated_grid = tmp;
+        //tmp = grid;
+        //grid = updated_grid;
+        //updated_grid = tmp;
+        
+        #pragma omp target
+#pragma omp teams
+#pragma omp distribute parallel for collapse(2)
+        for (int i=0;i<n;i++){
+                for (int j=0;j<m;j++){
+                        grid[i,j] = updated_grid[i,j];
+                }
+        }
+#pragma omp end teams
+#pragma omp end target
+        current_step++;
+
+        
         current_step++;
         get_elapsed_time(steptime);
     }
