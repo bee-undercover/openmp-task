@@ -87,7 +87,7 @@ int main(int argc, char **argv)
         return -1;
     }
     //allocate GPU memory and transfer data to the GPU
-    #pragma omp target enter data map(alloc:grid,updated_grid) map(to:grid)
+    #pragma omp target enter data map(alloc:grid,updated_grid) map(to:grid,updated_grid)
     int current_step = 0;
     int *tmp = NULL;
     generate_IC(opt->iictype, grid, n, m);
@@ -106,11 +106,10 @@ int main(int argc, char **argv)
 #pragma omp distribute parallel for collapse(2)
         for (int i=0;i<n;i++){
                 for (int j=0;j<m;j++){
-                        grid[i,j] = updated_grid[i,j];
+                        grid[i * m + j] = updated_grid[i * m + j];
                 }
         }
-#pragma omp end teams
-#pragma omp end target
+
         current_step++;
 
         
