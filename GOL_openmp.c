@@ -111,9 +111,6 @@ int main(int argc, char **argv)
         }
 
         current_step++;
-
-        
-        current_step++;
         get_elapsed_time(steptime);
     }
     //transfer data back from the GPU
