@@ -3,9 +3,14 @@
 void game_of_life(struct Options *opt, int *current_grid, int *next_grid, int n, int m){
     int neighbours;
     int n_i[8], n_j[8];
+    #pragma omp target
+    #pragma omp teams private (n_i,n_j,neighbours) 
+    #pragma omp distribute parallel for collapse(2)
     for(int i = 0; i < n; i++){
         for(int j = 0; j < m; j++){
             // count the number of neighbours, clockwise around the current cell.
+            #pragma omp critical
+
             neighbours = 0;
             n_i[0] = i - 1; n_j[0] = j - 1;
             n_i[1] = i - 1; n_j[1] = j;
@@ -73,6 +78,9 @@ int main(int argc, char **argv)
         printf("Error while allocating memory.\n");
         return -1;
     }
+    //Transfer data to the GPU
+    #pragma omp target enter data map(to:grid[0:n*m],updated_grid[0:n*m])
+
     int current_step = 0;
     int *tmp = NULL;
     generate_IC(opt->iictype, grid, n, m);
@@ -88,6 +96,8 @@ int main(int argc, char **argv)
         current_step++;
         get_elapsed_time(steptime);
     }
+    //transfer data back from the GPU
+    #pragma omp target exit data map(from: grid[0:n*m])
     game_of_life_stats(opt, current_step, grid);
     printf("Finished GOL\n");
     get_elapsed_time(start);
