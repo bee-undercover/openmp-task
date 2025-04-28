@@ -9,6 +9,10 @@
 void game_of_life(struct Options *opt, int *current_grid, int *next_grid, int n, int m){
     int neighbours;
     int n_i[8], n_j[8];
+    #pragma omp target
+    #pragma omp teams private (n,m,n_i,n_j,neighbours) shared(current_grid,next_grid) 
+    #pragma omp distribute parallel for collapse(2)
+
     for(int i = 0; i < n; i++){
         for(int j = 0; j < m; j++){
             // count the number of neighbours, clockwise around the current cell.
@@ -21,7 +25,7 @@ void game_of_life(struct Options *opt, int *current_grid, int *next_grid, int n,
             n_i[5] = i + 1; n_j[5] = j;
             n_i[6] = i + 1; n_j[6] = j - 1;
             n_i[7] = i;     n_j[7] = j - 1;
-
+#pragma omp critical
             if(n_i[0] >= 0 && n_j[0] >= 0 && current_grid[n_i[0] * m + n_j[0]] == ALIVE) neighbours++;
             if(n_i[1] >= 0 && current_grid[n_i[1] * m + n_j[1]] == ALIVE) neighbours++;
             if(n_i[2] >= 0 && n_j[2] < m && current_grid[n_i[2] * m + n_j[2]] == ALIVE) neighbours++;
@@ -87,6 +91,8 @@ int main(int argc, char **argv)
     generate_IC(opt->iictype, grid, n, m);
     struct timeval start, steptime;
     start = init_time();
+    //allocate GPU memory and transfer data to the GPU
+    #pragma omp target enter data map(alloc:grid[0:n*m],updated_grid[0:n*m]) map(to:grid[0:n*m])
     while(current_step != nsteps){
         steptime = init_time();
         game_of_life(opt, grid, updated_grid, n, m);
@@ -97,6 +103,8 @@ int main(int argc, char **argv)
         current_step++;
         get_elapsed_time(steptime);
     }
+    //transfer data back from the GPU
+    #pragma omp target exit data map(from: grid[0:n*m])
     game_of_life_stats(opt, current_step, grid);
     printf("Finished GOL\n");
     get_elapsed_time(start);
